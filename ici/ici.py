@@ -2,11 +2,13 @@
 #encoding:utf-8
 from __future__ import print_function, unicode_literals
 
+from requests import Request
 import re
 import sys
 import getopt
 import logging
 from xml.dom import minidom
+import lxml
 from collections import namedtuple
 try:
     from urllib.request import urlopen
@@ -34,45 +36,27 @@ logger = logging.getLogger(__name__)
 
 def get_response(words):
     try:
+        url_addr = URL + '?key=' + KEY + '&w=' + words
+        r = Request(url_addr)
         response = urlopen(URL + '?key=' + KEY + '&w=' + words)
     except Exception:
         logger.error('哎哟,好像出错了')
         return
-    return response
+    return response, r
 
 
-def read_xml(xml):
-    dom = minidom.parse(xml)
-    return dom.documentElement
 
+def parse_xml(xml):
+    import xml.etree.cElementTree as ET
+    tree = ET.fromstring(xml)
+    for elem in tree.iter():
+        if elem.tag == 'acceptation':
+            print (elem.tag)
+            print (elem.attrib)
+            print (elem.text)
 
-def show(node):
-    if not node.hasChildNodes():
-        if node.nodeType == node.TEXT_NODE and node.data != '\n':
-            tag_name = node.parentNode.tagName
-            content = node.data.replace('\n', '')
-            if tag_name in TAG_DICT.keys():
-                tag = TAG_DICT[tag_name]
-                print (colored(tag.value % content, tag.color))
-    else:
-        for e in node.childNodes:
-            show(e)
-
-
-def main():
-    try:
-        options, args = getopt.getopt(sys.argv[1:], ["help"])
-    except getopt.GetoptError as e:
-        pass
-
-    match = re.findall(r'[\w.]+', " ".join(args).lower())
-    words = "_".join(match)
-    response = get_response(words)
-    if not response:
-        return
-    root = read_xml(response)
-    show(root)
 
 
 if __name__ == '__main__':
-    main()
+    res, r =  get_response(sys.argv[1])
+    parse_xml(res.read())
