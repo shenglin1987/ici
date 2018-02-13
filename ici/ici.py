@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #encoding:utf-8
 from __future__ import print_function, unicode_literals
-
+import json, codecs
 from requests import Request
 import re
 import sys
@@ -37,26 +37,55 @@ logger = logging.getLogger(__name__)
 def get_response(words):
     try:
         url_addr = URL + '?key=' + KEY + '&w=' + words
-        r = Request(url_addr)
         response = urlopen(URL + '?key=' + KEY + '&w=' + words)
     except Exception:
         logger.error('哎哟,好像出错了')
         return
-    return response, r
+    return response
 
 
 
 def parse_xml(xml):
     import xml.etree.cElementTree as ET
     tree = ET.fromstring(xml)
+    chinese = []
     for elem in tree.iter():
         if elem.tag == 'acceptation':
-            print (elem.tag)
-            print (elem.attrib)
-            print (elem.text)
+            tmp = re.split(r'[;,；，\s]', elem.text.strip())
+            tmp = [item for item in tmp if item.strip()]
+            chinese += tmp
+    return chinese
 
-
-
+def translate(word):
+    response = get_response(word)
+    chinese = parse_xml(response.read())
+    return chinese
+    
 if __name__ == '__main__':
-    res, r =  get_response(sys.argv[1])
-    parse_xml(res.read())
+    for item in translate(u'word'):
+        print (item)
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--ifilename', help='tags input file name', default='image.json')
+    parser.add_argument('-o', '--ofilename', help='tag output file name', default='chinese_image.json')
+    args = parser.parse_args()
+    ifilename = args.ifilename
+    ofilename = args.ofilename
+    with codecs.open(ifilename, 'r', 'utf-8') as input_file:
+        with codecs.open(ofilename, 'w', 'utf-8') as output_file:
+            line = input_file.readline()
+            while line:
+                line = json.loads(line)
+                tags = line['img_tags']
+                img_url = line['img_url']
+                chinese_tags = []
+                for tag in tags:
+                    if (len(tag.split())>1):
+                        continue
+                    c_tag = translate(tag)
+                    chinese_tags.append(c_tag[0])
+                line['img_tags'] = chinese_tags
+                line = json.dumps(line, ensure_ascii=False)
+                output_file.write(line + '\n')
+                line = input_file.readline()
