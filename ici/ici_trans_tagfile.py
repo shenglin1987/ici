@@ -85,6 +85,8 @@ if __name__ == '__main__':
             line = input_file.readline().strip()
             while line:   
                 img_id = int(line)
+                if img_id % 100 == 0:
+                    print (img_id)
                 tags = input_file.readline().strip().split(',')
                 extend_tags = []
                 for tag in tags:
